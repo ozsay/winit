@@ -38,6 +38,8 @@ pub trait WindowExtMacOS {
 
     /// Sets whether or not the window has shadow.
     fn set_has_shadow(&self, has_shadow: bool);
+
+    fn set_visible_on_all_workspaces(&self, visible: bool, visible_on_fullscreen: bool);
 }
 
 impl WindowExtMacOS for Window {
@@ -69,6 +71,11 @@ impl WindowExtMacOS for Window {
     #[inline]
     fn set_has_shadow(&self, has_shadow: bool) {
         self.window.set_has_shadow(has_shadow)
+    }
+
+    #[inline]
+    fn set_visible_on_all_workspaces(&self, visible: bool, visible_on_fullscreen: bool) {
+        self.window.set_visible_on_all_workspaces(visible, visible_on_fullscreen)
     }
 }
 

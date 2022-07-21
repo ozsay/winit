@@ -7,7 +7,7 @@ use simple_logger::SimpleLogger;
 use winit::{
     event::{Event, StartCause, WindowEvent},
     event_loop::EventLoop,
-    window::WindowBuilder,
+    window::WindowBuilder, platform::macos::WindowExtMacOS,
 };
 
 fn main() {
@@ -20,6 +20,11 @@ fn main() {
         .unwrap();
 
     let timer_length = Duration::new(1, 0);
+
+    _window.set_always_on_top(true);
+
+    #[cfg(target_os = "macos")]
+    _window.set_visible_on_all_workspaces(false, true);
 
     event_loop.run(move |event, _, control_flow| {
         println!("{:?}", event);

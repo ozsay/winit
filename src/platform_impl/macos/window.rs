@@ -36,7 +36,8 @@ use crate::{
 use cocoa::{
     appkit::{
         self, CGFloat, NSApp, NSApplication, NSApplicationPresentationOptions, NSColor,
-        NSRequestUserAttentionType, NSScreen, NSView, NSWindow, NSWindowButton, NSWindowStyleMask,
+        NSRequestUserAttentionType, NSScreen, NSView, NSWindow, NSWindowButton,
+        NSWindowCollectionBehavior, NSWindowStyleMask,
     },
     base::{id, nil},
     foundation::{NSDictionary, NSPoint, NSRect, NSSize, NSUInteger},
@@ -48,6 +49,30 @@ use objc::{
     runtime::{Class, Object, Sel, BOOL, NO, YES},
 };
 use once_cell::sync::Lazy;
+
+pub type UInt32 = ::std::os::raw::c_uint;
+pub type SInt32 = ::std::os::raw::c_int;
+pub type OSStatus = SInt32;
+pub type ProcessApplicationTransformState = UInt32;
+
+#[repr(C, packed(2))]
+#[derive(Debug, Copy, Clone)]
+pub struct ProcessSerialNumber {
+    pub highLongOfPSN: UInt32,
+    pub lowLongOfPSN: UInt32,
+}
+
+extern "C" {
+    pub fn TransformProcessType(
+        psn: *const ProcessSerialNumber,
+        transformState: ProcessApplicationTransformState,
+    ) -> OSStatus;
+}
+
+pub const kCurrentProcess: ::std::os::raw::c_uint = 2;
+pub const kProcessTransformToForegroundApplication: ::std::os::raw::c_uint = 1;
+pub const kProcessTransformToBackgroundApplication: ::std::os::raw::c_uint = 2;
+pub const kProcessTransformToUIElementApplication: ::std::os::raw::c_uint = 4;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WindowId(pub usize);
@@ -509,8 +534,16 @@ impl UnownedWindow {
 
     pub fn set_visible(&self, visible: bool) {
         match visible {
-            true => unsafe { util::make_key_and_order_front_async(*self.ns_window) },
-            false => unsafe { util::order_out_async(*self.ns_window) },
+            true => unsafe {
+                NSApp().activateIgnoringOtherApps_(YES);
+                util::make_key_and_order_front_async(*self.ns_window)
+            },
+            false => unsafe {
+                util::order_out_async(*self.ns_window);
+                let app = NSApp();
+
+                let res: () = msg_send![app, hide: nil];
+            },
         }
     }
 
@@ -1261,6 +1294,43 @@ impl WindowExtMacOS for UnownedWindow {
         unsafe {
             self.ns_window
                 .setHasShadow_(if has_shadow { YES } else { NO })
+        }
+    }
+
+    #[inline]
+    fn set_visible_on_all_workspaces(&self, visible: bool, visible_on_fullscreen: bool) {
+        unsafe {
+            // let psn = ProcessSerialNumber {
+            //     highLongOfPSN: 0,
+            //     lowLongOfPSN: kCurrentProcess,
+            // };
+
+            // self.ns_window.setCanHide_(NO);
+            // TransformProcessType(&psn, kProcessTransformToUIElementApplication);
+
+            if visible {
+                self.ns_window.setCollectionBehavior_(
+                    self.ns_window.collectionBehavior()
+                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces,
+                )
+            } else {
+                self.ns_window.setCollectionBehavior_(
+                    self.ns_window.collectionBehavior()
+                        & NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces,
+                )
+            }
+
+            if visible_on_fullscreen {
+                self.ns_window.setCollectionBehavior_(
+                    self.ns_window.collectionBehavior()
+                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
+                )
+            } else {
+                self.ns_window.setCollectionBehavior_(
+                    self.ns_window.collectionBehavior()
+                        & NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
+                )
+            }
         }
     }
 }
