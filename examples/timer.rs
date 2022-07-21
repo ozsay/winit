@@ -21,6 +21,8 @@ fn main() {
 
     let timer_length = Duration::new(1, 0);
 
+    _window.set_always_on_top(true);
+
     event_loop.run(move |event, _, control_flow| {
         println!("{:?}", event);
 
