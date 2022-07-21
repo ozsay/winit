@@ -36,7 +36,7 @@ use crate::{
 use cocoa::{
     appkit::{
         self, CGFloat, NSApp, NSApplication, NSApplicationPresentationOptions, NSColor,
-        NSRequestUserAttentionType, NSScreen, NSView, NSWindow, NSWindowButton, NSWindowStyleMask,
+        NSRequestUserAttentionType, NSScreen, NSView, NSWindow, NSWindowButton, NSWindowStyleMask, NSWindowCollectionBehavior,
     },
     base::{id, nil},
     foundation::{NSDictionary, NSPoint, NSRect, NSSize, NSUInteger},
@@ -1054,7 +1054,14 @@ impl UnownedWindow {
         } else {
             ffi::NSWindowLevel::NSNormalWindowLevel
         };
-        unsafe { util::set_level_async(*self.ns_window, level) };
+        unsafe {
+            util::set_level_async(*self.ns_window, level);
+            // always_on_top for fullscreen applications
+            self.ns_window.setCollectionBehavior_(
+                self.ns_window.collectionBehavior()
+                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
+            )
+        };
     }
 
     #[inline]
